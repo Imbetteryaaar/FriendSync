@@ -83,8 +83,8 @@ io.on('connection', (socket) => {
         const room = rooms[code];
         if (!room || socket.id !== room.hostId) return;
 
-        if (Object.keys(room.players).length < 3) {
-            socket.emit('errorMsg', "Need at least 3 players to start!");
+        if (Object.keys(room.players).length < 2) {
+            socket.emit('errorMsg', "Need at least 2 players to start!");
             return;
         }
 
