@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FriendSync</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #1e1e2e;
+            --card: #2a2a40;
+            --accent: #f9ca24;
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --text: #ffffff;
+            --selected: #ffffff;
+        }
+
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x:hidden;}
+        h1 { font-family: 'Fredoka', sans-serif; margin:0; }
+        
+        .screen { display: none; width: 90%; max-width: 500px; text-align: center; margin-top: 20px; animation: fadeIn 0.4s ease; flex-direction: column; align-items: center; padding-bottom: 50px;}
+        .screen.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }}
+
+        .btn { background: var(--accent); color: #1e1e2e; border: none; padding: 15px 30px; font-size: 1.1em; font-weight: 800; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #b08d16; margin: 10px 0; width: 85%; transition:0.1s; }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b08d16; }
+        
+        input { padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; width: 80%; margin-bottom: 10px; text-align: center; outline: none; }
+        
+        /* TIMER */
+        #timer-container { width: 100%; height: 10px; background: #333; position: fixed; top: 0; left: 0; display: none; z-index: 9999; }
+        #timer-bar { height: 100%; background: var(--accent); width: 100%; transform-origin: left; }
+
+        /* LISTS */
+        #sortable-list { list-style: none; padding: 0; width: 100%; }
+        #sortable-list li { background: white; color: var(--bg); margin: 8px 0; padding: 15px; border-radius: 10px; font-weight: 700; cursor: grab; display: flex; justify-content: space-between; position: relative;}
+        .drag-handle { opacity: 0.4; cursor: grab; font-size: 1.2em; }
+        .item-text { pointer-events: none; }
+
+        /* --- NEW RESULTS UI --- */
+        
+        /* 1. TOP BAR (Player Selector) */
+        #player-tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            width: 100%;
+            padding: 10px 0;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        #player-tabs::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome */
+        
+        .tab-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 5px 15px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: 0.2s;
+            font-size: 0.9em;
+            opacity: 0.6;
+        }
+        .tab-btn.active {
+            background: var(--accent);
+            color: black;
+            font-weight: bold;
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        /* 2. CARD DETAIL VIEW */
+        #detail-view { width: 100%; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); }}
+
+        .result-item {
+            background: rgba(255,255,255,0.1); padding: 12px; margin: 5px 0; border-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+        }
+        .result-item.correct { background: rgba(46, 204, 113, 0.2); border-left: 5px solid var(--green); }
+        .result-item.wrong { background: rgba(231, 76, 60, 0.1); border-left: 5px solid var(--red); opacity: 0.8; }
+        
+        .badge-score { background: var(--green); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
+
+        /* TRUTH BOX */
+        .truth-box {
+            background: var(--card); padding: 15px; border-radius: 10px; width: 100%; margin-bottom: 15px; box-sizing: border-box;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .truth-item { font-size: 0.85em; opacity: 0.8; margin-bottom: 2px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="timer-container"><div id="timer-bar"></div></div>
+    <div id="room-display" style="position:absolute; top:15px; right:15px; background:white; color:black; padding:5px 10px; border-radius:15px; font-weight:bold; display:none; z-index:100;"></div>
+
+    <div id="screen-home" class="screen active">
+        <h1 style="font-size: 3em;">Friend<span style="color:var(--accent)">Sync</span></h1>
+        <br>
+        <input type="text" id="username" placeholder="Your Name">
+        <button class="btn" onclick="createRoom()">CREATE ROOM</button>
+        <div style="margin:10px; opacity:0.5">- OR -</div>
+        <input type="text" id="room-code-input" placeholder="Room Code">
+        <button class="btn" onclick="joinRoom()" style="background:transparent; border:2px solid var(--accent); color:var(--accent); box-shadow:none;">JOIN ROOM</button>
+    </div>
+
+    <div id="screen-lobby" class="screen">
+        <h2>Lobby</h2>
+        <h1 id="lobby-code" style="letter-spacing:5px; color:var(--accent); margin:10px;"></h1>
+        <div id="lobby-list" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:20px 0;"></div>
+        
+        <div id="host-controls" style="display:none; width:100%;">
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; margin-bottom:10px;">
+                <label>Rounds: <span id="disp-rounds">5</span></label>
+                <input type="range" id="inp-rounds" min="3" max="15" value="5" oninput="updateSetDisplay()">
+            </div>
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; margin-bottom:10px;">
+                <label>Timer: <span id="disp-timer">60</span>s</label>
+                <input type="range" id="inp-timer" min="20" max="120" value="60" oninput="updateSetDisplay()">
+            </div>
+            <button class="btn" onclick="startGame()">START GAME</button>
+        </div>
+        <p id="wait-msg">Waiting for host...</p>
+    </div>
+
+    <div id="screen-selection" class="screen">
+        <h3>Round <span id="round-num"></span></h3>
+        <h2>You are Spotlight!</h2>
+        <button class="btn" onclick="toggleCustom()">+ Custom Board</button>
+        <div id="custom-form" style="display:none; width:100%;">
+            <input id="c-prompt" placeholder="Question">
+            <input class="c-opt" placeholder="1"><input class="c-opt" placeholder="2">
+            <input class="c-opt" placeholder="3"><input class="c-opt" placeholder="4">
+            <button class="btn" onclick="submitCustom()">GO</button>
+        </div>
+        <div id="topic-container" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:10px;"></div>
+    </div>
+
+    <div id="screen-waiting" class="screen">
+        <h2 id="wait-name"></h2>
+        <div style="font-size:3em;">🤔</div>
+        <p>is choosing the topic...</p>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:15px; margin-bottom:10px;">
+            <span id="role-text"></span>
+        </div>
+        <h2 id="q-prompt" style="font-size:1.3em;"></h2>
+        <ul id="sortable-list"></ul>
+        <button class="btn" id="btn-submit" onclick="submitRank()">LOCK IN</button>
+    </div>
+
+    <div id="screen-results" class="screen">
+        <h2>Results</h2>
+        
+        <div class="truth-box">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <strong style="color:var(--accent);">The Truth (<span id="res-spot-name"></span>)</strong>
+                <span style="font-size:0.8em; opacity:0.5;">(Tap tabs below to compare)</span>
+            </div>
+            <div id="correct-list-summary"></div>
+        </div>
+
+        <div id="player-tabs"></div>
+
+        <div id="detail-view">
+            </div>
+        
+        <button class="btn" id="btn-next" onclick="nextRound()" style="display:none; margin-top:20px;">NEXT ROUND</button>
+    </div>
+
+    <div id="screen-over" class="screen">
+        <h1>GAME OVER</h1>
+        
+        <div style="background: linear-gradient(135deg, #f0932b, #f9ca24); color: black; padding: 20px; border-radius: 20px; width: 90%; margin-bottom: 20px;">
+            <div style="font-size:3em;">🏆</div>
+            <h2 id="winner-name" style="margin:0;">Name</h2>
+            <p style="margin:0;">is the Winner!</p>
+        </div>
+
+        <div style="display:flex; gap:10px; width:95%;">
+            <div style="background: rgba(46, 204, 113, 0.2); padding: 15px; border-radius: 10px; flex:1;">
+                <h3>💖 Soulmates</h3>
+                <p id="soulmate-text" style="font-weight:bold; font-size:0.9em;"></p>
+            </div>
+            <div style="background: rgba(231, 76, 60, 0.2); padding: 15px; border-radius: 10px; flex:1;">
+                <h3>👻 Strangers</h3>
+                <p id="stranger-text" style="font-weight:bold; font-size:0.9em;"></p>
+            </div>
+        </div>
+
+        <h3>Leaderboard</h3>
+        <div id="final-leaderboard" style="width:100%;"></div>
+        <button class="btn" onclick="location.reload()" style="margin-top:20px;">PLAY AGAIN</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script>
+        const socket = io();
+        let myId = null;
+        let localTimer = null;
+        let hasSubmitted = false;
+        
+        // Globals for Results Logic
+        let currentRoundResults = [];
+        let currentCorrectOrder = [];
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('timer-container').style.display = (id === 'screen-game') ? 'block' : 'none';
+        }
+
+        function updateSetDisplay() {
+            document.getElementById('disp-rounds').innerText = document.getElementById('inp-rounds').value;
+            document.getElementById('disp-timer').innerText = document.getElementById('inp-timer').value;
+        }
+
+        // --- SOCKETS ---
+        socket.on('errorMsg', msg => alert(msg));
+        
+        socket.on('updateState', (state) => {
+            myId = socket.id;
+            document.getElementById('lobby-code').innerText = state.roomCode;
+            document.getElementById('room-display').innerText = state.roomCode;
+            document.getElementById('room-display').style.display = 'block';
+
+            const pList = document.getElementById('lobby-list');
+            pList.innerHTML = state.players.map(p => 
+                `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:10px;">${p.name} ${p.isHost?'👑':''}</div>`
+            ).join('');
+
+            if(state.phase === 'LOBBY') {
+                showScreen('screen-lobby');
+                const isHost = (socket.id === state.hostId);
+                document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
+                document.getElementById('wait-msg').style.display = isHost ? 'none' : 'block';
+            }
+        });
+
+        socket.on('goToSelection', (data) => {
+            if(socket.id === data.spotlightId) {
+                showScreen('screen-selection');
+                document.getElementById('round-num').innerText = data.roundInfo;
+                document.getElementById('topic-container').innerHTML = data.topics.map(t => 
+                    `<div style="background:#432c7a; padding:15px; border-radius:10px; cursor:pointer;" onclick="submitPreset('${t.id}')">${t.prompt}</div>`
+                ).join('');
+            } else {
+                showScreen('screen-waiting');
+                document.getElementById('wait-name').innerText = data.spotlightName;
+            }
+        });
+
+        socket.on('roundStart', (data) => {
+            showScreen('screen-game');
+            hasSubmitted = false;
+            document.getElementById('q-prompt').innerText = data.question.prompt;
+            const isSpot = (data.spotlightName === document.getElementById('username').value);
+            document.getElementById('role-text').innerHTML = isSpot ? "🔦 Rank the TRUTH" : `Guess <strong>${data.spotlightName}'s</strong> Rank`;
+            
+            // ANIMATION & AUTO SUBMIT
+            const bar = document.getElementById('timer-bar');
+            bar.style.transition = 'none'; bar.style.width = '100%';
+            void bar.offsetWidth; // Force Reflow
+            bar.style.transition = `width ${data.duration}s linear`;
+            bar.style.width = '0%';
+
+            if(localTimer) clearTimeout(localTimer);
+            localTimer = setTimeout(() => { if(!hasSubmitted) submitRank(); }, data.duration * 1000);
+
+            // LIST
+            const list = document.getElementById('sortable-list');
+            list.innerHTML = "";
+            [...data.question.options].sort(()=>Math.random()-0.5).forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="item-text">${item}</span> <span class="drag-handle">☰</span>`;
+                list.appendChild(li);
+            });
+            new Sortable(list, { animation: 150 });
+            document.getElementById('btn-submit').style.display = 'inline-block';
+        });
+
+        socket.on('roundOver', (data) => {
+            showScreen('screen-results');
+            if(localTimer) clearTimeout(localTimer);
+
+            // Save data for tab switching
+            currentCorrectOrder = data.correctOrder;
+            currentRoundResults = data.results.sort((a,b) => b.points - a.points); // Sort by highest score
+
+            document.getElementById('res-spot-name').innerText = data.spotlightName;
+            
+            // 1. Render Truth Box (Summary)
+            document.getElementById('correct-list-summary').innerHTML = 
+                data.correctOrder.map((it,i) => `<div class="truth-item">${i+1}. ${it}</div>`).join('');
+            
+            // 2. Render Tabs
+            const tabContainer = document.getElementById('player-tabs');
+            tabContainer.innerHTML = "";
+            
+            currentRoundResults.forEach((res, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'tab-btn';
+                // Show Name + Score in the tab
+                btn.innerHTML = `${res.name} <span style="font-size:0.8em; color:var(--accent)">+${res.points}</span>`;
+                btn.onclick = () => renderPlayerDetail(index);
+                btn.id = `tab-${index}`;
+                tabContainer.appendChild(btn);
+            });
+
+            // 3. Auto-Select Tab (Me, or Top Player)
+            const myIndex = currentRoundResults.findIndex(r => r.id === myId);
+            renderPlayerDetail(myIndex !== -1 ? myIndex : 0);
+
+            document.getElementById('btn-next').style.display = 'inline-block';
+        });
+
+        // --- NEW RENDER FUNCTION ---
+        function renderPlayerDetail(index) {
+            // Update Tabs UI
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const activeTab = document.getElementById(`tab-${index}`);
+            if(activeTab) activeTab.classList.add('active');
+
+            const data = currentRoundResults[index];
+            const container = document.getElementById('detail-view');
+            container.innerHTML = ""; // Clear old
+
+            if (!data || !data.rank) return; // Safety
+
+            // Recreate the "Card Structure"
+            const header = document.createElement('h3');
+            header.innerText = `${data.name}'s Guess:`;
+            container.appendChild(header);
+
+            data.rank.forEach((item, idx) => {
+                const isCorrect = (item === currentCorrectOrder[idx]);
+                const div = document.createElement('div');
+                div.className = `result-item ${isCorrect ? 'correct' : 'wrong'}`;
+                
+                let html = `<span>${idx+1}. ${item}</span>`;
+                if(isCorrect) html += `<span class="badge-score">+10</span>`;
+                
+                div.innerHTML = html;
+                container.appendChild(div);
+            });
+        }
+
+        socket.on('gameOver', (data) => {
+            showScreen('screen-over');
+            document.getElementById('room-display').style.display = 'none';
+            document.getElementById('winner-name').innerText = data.winner ? data.winner.name : "No One";
+            document.getElementById('soulmate-text').innerText = data.soulmates.names + ` (${data.soulmates.score})`;
+            document.getElementById('stranger-text').innerText = data.strangers.names + ` (${data.strangers.score})`;
+            document.getElementById('final-leaderboard').innerHTML = data.leaderboard.map((p, i) => 
+                `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <span>#${i+1} ${p.name}</span> <span>${p.score} pts</span>
+                </div>`
+            ).join('');
+        });
+
+        // --- ACTIONS ---
+        function createRoom() { const n=document.getElementById('username').value; if(n) socket.emit('createRoom', n); }
+        function joinRoom() { const n=document.getElementById('username').value; const c=document.getElementById('room-code-input').value; if(n&&c) socket.emit('joinRoom', {playerName:n, roomCode:c}); }
+        function startGame() { socket.emit('startGame', { rounds: document.getElementById('inp-rounds').value, timer: document.getElementById('inp-timer').value }); }
+        
+        function toggleCustom() { const el=document.getElementById('custom-form'); el.style.display=el.style.display==='none'?'block':'none'; }
+        function submitCustom() {
+            const p = document.getElementById('c-prompt').value;
+            const o = Array.from(document.querySelectorAll('.c-opt')).map(i=>i.value).filter(v=>v);
+            if(o.length>=2) socket.emit('submitTopic', {type:'CUSTOM', prompt:p, options:o});
+        }
+        function submitPreset(id) { socket.emit('submitTopic', {type:'PREMADE', id}); }
+        
+        function submitRank() {
+            if(hasSubmitted) return;
+            hasSubmitted = true;
+            const rank = Array.from(document.querySelectorAll('#sortable-list li .item-text')).map(s => s.innerText);
+            socket.emit('submitRank', rank);
+            document.getElementById('btn-submit').style.display = 'none';
+        }
+        function nextRound() { socket.emit('nextRound'); }
+    </script>
+</body>
+</html>
