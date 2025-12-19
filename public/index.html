@@ -2,389 +2,566 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FriendSync</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Patrick+Hand&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
-            --bg: #1e1e2e;
-            --card: #2a2a40;
-            --accent: #f9ca24;
-            --green: #2ecc71;
-            --red: #e74c3c;
-            --text: #ffffff;
-            --selected: #ffffff;
+            --paper: #fdf6e3; --ink: #2c3e50; --accent: #e67e22; --green: #27ae60; --red: #c0392b; --border: 3px solid #2c3e50;
         }
 
-        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x:hidden;}
-        h1 { font-family: 'Fredoka', sans-serif; margin:0; }
-        
-        .screen { display: none; width: 90%; max-width: 500px; text-align: center; margin-top: 20px; animation: fadeIn 0.4s ease; flex-direction: column; align-items: center; padding-bottom: 50px;}
-        .screen.active { display: flex; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }}
+        body {
+            font-family: 'Patrick Hand', cursive; background-color: #dcdde1;
+            background-image: url('https://www.transparenttextures.com/patterns/felt.png');
+            color: var(--ink); margin: 0; display: flex; flex-direction: column;
+            align-items: center; min-height: 100vh; overflow-x: hidden; padding-bottom: 100px;
+        }
 
-        .btn { background: var(--accent); color: #1e1e2e; border: none; padding: 15px 30px; font-size: 1.1em; font-weight: 800; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #b08d16; margin: 10px 0; width: 85%; transition:0.1s; }
-        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b08d16; }
-        
-        input { padding: 15px; border-radius: 12px; border: none; background: rgba(255,255,255,0.1); color: white; width: 80%; margin-bottom: 10px; text-align: center; outline: none; }
-        
-        /* TIMER */
-        #timer-container { width: 100%; height: 10px; background: #333; position: fixed; top: 0; left: 0; display: none; z-index: 9999; }
+        .screen { display: none; width: 92%; max-width: 500px; text-align: center; margin-top: 20px; animation: bounceIn 0.5s ease; flex-direction: column; align-items: center; }
+        .screen.active { display: flex; }
+        @keyframes bounceIn { 0% { transform: scale(0.8); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; }}
+
+        .paper-card { background: var(--paper); border: var(--border); border-radius: 15px 5px 15px 5px; padding: 25px; box-shadow: 8px 8px 0 rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 20px; }
+        h1 { font-family: 'Fredoka One', cursive; color: var(--accent); font-size: 3.2em; margin: 0; text-shadow: 3.3px 3.3px 0 var(--ink); }
+        h2 { font-family: 'Fredoka One', cursive; font-size: 1.6em; }
+
+        .btn { background: var(--accent); color: white; border: var(--border); padding: 16px 25px; font-size: 1.4em; font-family: 'Fredoka One', cursive; border-radius: 10px 5px 10px 5px; cursor: pointer; margin: 10px 0; width: 90%; box-shadow: 4px 4px 0 var(--ink); transition: 0.1s; }
+        .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+
+        input[type="text"], input[type="number"], input[type="range"] { padding: 12px; border: 2.5px solid var(--ink); border-radius: 10px; background: rgba(255,255,255,0.8); font-size: 1.1em; width: 85%; margin-bottom: 10px; text-align: center; }
+
+        #timer-container { width: 100%; height: 14px; background: #eee; border-bottom: 3px solid var(--ink); position: fixed; top: 0; z-index: 2000; display: none; }
         #timer-bar { height: 100%; background: var(--accent); width: 100%; transform-origin: left; }
 
-        /* LISTS */
         #sortable-list { list-style: none; padding: 0; width: 100%; }
-        #sortable-list li { background: white; color: var(--bg); margin: 8px 0; padding: 15px; border-radius: 10px; font-weight: 700; cursor: grab; display: flex; justify-content: space-between; position: relative;}
-        .drag-handle { opacity: 0.4; cursor: grab; font-size: 1.2em; }
-        .item-text { pointer-events: none; }
+        #sortable-list li { background: white; border: 2.5px solid var(--ink); margin: 12px 0; padding: 15px; border-radius: 10px; font-weight: bold; font-size: 1.3em; display: flex; flex-direction: column; align-items: center; box-shadow: 5px 5px 0 rgba(0,0,0,0.1); touch-action: none; cursor: grab; user-select: none; }
+        .option-img { width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; margin-top: 10px; }
 
-        /* --- NEW RESULTS UI --- */
-        
-        /* 1. TOP BAR (Player Selector) */
-        #player-tabs {
+        /* INSPECTOR CARDS */
+        .tab-btn { background: white; border: 2px solid var(--ink); padding: 8px 18px; border-radius: 20px; white-space: nowrap; cursor: pointer; font-family: 'Fredoka One', cursive; margin-right: 8px; }
+        .tab-btn.active { background: var(--accent); color: white; transform: translateY(-3px); }
+        .res-card { background: white; border: 2px solid var(--ink); padding: 15px; margin: 8px 0; border-radius: 10px; display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold;}
+        .res-correct { border-left: 12px solid var(--green); }
+        .res-wrong { border-left: 12px solid var(--red); opacity: 0.7; }
+
+        /* CUSTOM CREATOR STYLES */
+        .custom-row {
             display: flex;
+            align-items: center;
+            background: white;
+            border: 2px solid var(--ink);
+            border-radius: 10px;
+            padding: 8px;
+            margin-bottom: 10px;
             gap: 10px;
-            overflow-x: auto;
-            width: 100%;
-            padding: 10px 0;
-            scrollbar-width: none; /* Hide scrollbar Firefox */
+            position: relative;
         }
-        #player-tabs::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome */
-        
-        .tab-btn {
-            background: rgba(255,255,255,0.1);
-            border: 2px solid transparent;
-            border-radius: 20px;
-            padding: 5px 15px;
+        .img-upload-box {
+            width: 70px;
+            height: 70px;
+            background: #eee;
+            border: 2px dashed #aaa;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             cursor: pointer;
-            white-space: nowrap;
-            transition: 0.2s;
-            font-size: 0.9em;
-            opacity: 0.6;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
         }
-        .tab-btn.active {
-            background: var(--accent);
-            color: black;
-            font-weight: bold;
-            opacity: 1;
-            transform: scale(1.05);
-        }
-
-        /* 2. CARD DETAIL VIEW */
-        #detail-view { width: 100%; animation: slideIn 0.3s ease; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); }}
-
-        .result-item {
-            background: rgba(255,255,255,0.1); padding: 12px; margin: 5px 0; border-radius: 8px;
-            display: flex; justify-content: space-between; align-items: center; font-weight: 600;
-        }
-        .result-item.correct { background: rgba(46, 204, 113, 0.2); border-left: 5px solid var(--green); }
-        .result-item.wrong { background: rgba(231, 76, 60, 0.1); border-left: 5px solid var(--red); opacity: 0.8; }
+        .img-upload-box:hover { background: #e1e1e1; }
+        .img-upload-box img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .img-upload-box span { font-size: 2em; color: #aaa; line-height: 0; padding-bottom: 5px; }
+        .c-opt-text { width: 100% !important; margin: 0 !important; border: none !important; background: transparent !important; text-align: left !important; font-weight: bold; }
         
-        .badge-score { background: var(--green); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
-
-        /* TRUTH BOX */
-        .truth-box {
-            background: var(--card); padding: 15px; border-radius: 10px; width: 100%; margin-bottom: 15px; box-sizing: border-box;
-            border: 1px solid rgba(255,255,255,0.1);
+        /* IMPROVED QUESTION BOX */
+        #c-prompt {
+            width: 100% !important;
+            box-sizing: border-box;
+            background: white;
+            border: 3px solid var(--accent) !important;
+            color: var(--accent);
+            font-family: 'Fredoka One';
+            font-size: 1.5em !important;
+            padding: 15px !important;
+            margin-bottom: 20px !important;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.05);
         }
-        .truth-item { font-size: 0.85em; opacity: 0.8; margin-bottom: 2px; }
+        #c-prompt::placeholder { color: #f39c12; opacity: 0.6; }
 
+        /* DELETE BUTTON */
+        .del-btn {
+            background: var(--red);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fredoka One';
+            cursor: pointer;
+            margin-left: 5px;
+            flex-shrink: 0;
+            box-shadow: 2px 2px 0 var(--ink);
+        }
+        .del-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+
+        /* FINALE LAYERS */
+        .finale-card { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--paper); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 5000; animation: bounceIn 0.5s; background-image: url('https://www.transparenttextures.com/patterns/felt.png'); }
+        .finale-text { font-family: 'Fredoka One'; font-size: 4em; color: var(--accent); text-shadow: 4px 4px 0 var(--ink); }
+        
+        /* FINAL SUMMARY BOX */
+        .final-stat-box {
+            background: white;
+            border: 2px solid var(--ink);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: left;
+        }
+        .stat-label { font-size: 0.9em; color: #7f8c8d; font-weight: bold; text-transform: uppercase; }
+        .stat-val { font-size: 1.5em; font-family: 'Fredoka One'; color: var(--ink); }
+
+        /* SPINNER */
+        .spinner { width: 50px; height: 50px; border: 5px solid #ccc; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { to { transform: rotate(360deg); }}
     </style>
 </head>
 <body>
 
     <div id="timer-container"><div id="timer-bar"></div></div>
-    <div id="room-display" style="position:absolute; top:15px; right:15px; background:white; color:black; padding:5px 10px; border-radius:15px; font-weight:bold; display:none; z-index:100;"></div>
+    <div id="room-display" style="position:fixed; top:20px; right:20px; background:var(--ink); color:white; padding:5px 15px; border-radius:20px; font-weight:bold; display:none; z-index:2100; font-family: 'Fredoka One';">----</div>
 
     <div id="screen-home" class="screen active">
-        <h1 style="font-size: 3em;">Friend<span style="color:var(--accent)">Sync</span></h1>
-        <br>
-        <input type="text" id="username" placeholder="Your Name">
-        <button class="btn" onclick="createRoom()">CREATE ROOM</button>
-        <div style="margin:10px; opacity:0.5">- OR -</div>
-        <input type="text" id="room-code-input" placeholder="Room Code">
-        <button class="btn" onclick="joinRoom()" style="background:transparent; border:2px solid var(--accent); color:var(--accent); box-shadow:none;">JOIN ROOM</button>
+        <h1>FriendSync</h1>
+        <div class="paper-card">
+            <p style="font-size: 1.6em; margin: 0;">How well do you know your friends?</p><br>
+            <input type="text" id="username" placeholder="Your Name">
+            <button class="btn" onclick="createRoom()">CREATE PARTY</button>
+            <div style="margin: 10px; font-weight:bold;">- OR -</div>
+            <input type="text" id="room-code-input" placeholder="ROOM CODE">
+            <button class="btn" style="background:var(--red);" onclick="joinRoom()">JOIN PARTY</button>
+        </div>
     </div>
 
     <div id="screen-lobby" class="screen">
-        <h2>Lobby</h2>
-        <h1 id="lobby-code" style="letter-spacing:5px; color:var(--accent); margin:10px;"></h1>
-        <div id="lobby-list" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:20px 0;"></div>
-        
-        <div id="host-controls" style="display:none; width:100%;">
-            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; margin-bottom:10px;">
-                <label>Rounds: <span id="disp-rounds">5</span></label>
-                <input type="range" id="inp-rounds" min="3" max="15" value="5" oninput="updateSetDisplay()">
+        <div class="paper-card">
+            <h2>Lobby</h2>
+            <h1 id="lobby-code" style="text-shadow: none; font-size: 4.5em;">----</h1>
+            <div id="lobby-list" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:20px 0;"></div>
+            <div id="host-controls" style="display:none; width:100%;">
+                <div style="background: rgba(0,0,0,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                    <label style="font-weight:bold;">Rounds: <span id="disp-rounds">5</span></label>
+                    <input type="range" id="inp-rounds" min="3" max="15" value="5" oninput="updateSetDisplay()" style="width:100%;">
+                    <br><br>
+                    <label style="font-weight:bold;">Timer: <span id="disp-timer">60</span>s</label>
+                    <input type="range" id="inp-timer" min="20" max="120" value="60" oninput="updateSetDisplay()" style="width:100%;">
+                </div>
+                <button class="btn" onclick="startGame()">START SYNC</button>
             </div>
-            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:10px; margin-bottom:10px;">
-                <label>Timer: <span id="disp-timer">60</span>s</label>
-                <input type="range" id="inp-timer" min="20" max="120" value="60" oninput="updateSetDisplay()">
-            </div>
-            <button class="btn" onclick="startGame()">START GAME</button>
         </div>
-        <p id="wait-msg">Waiting for host...</p>
     </div>
 
     <div id="screen-selection" class="screen">
-        <h3>Round <span id="round-num"></span></h3>
-        <h2>You are Spotlight!</h2>
-        <button class="btn" onclick="toggleCustom()">+ Custom Board</button>
-        <div id="custom-form" style="display:none; width:100%;">
-            <input id="c-prompt" placeholder="Question">
-            <input class="c-opt" placeholder="1"><input class="c-opt" placeholder="2">
-            <input class="c-opt" placeholder="3"><input class="c-opt" placeholder="4">
-            <button class="btn" onclick="submitCustom()">GO</button>
+        <div class="paper-card">
+            <h3>Round <span id="round-num"></span></h3>
+            <h2 id="sel-title">YOU ARE SPOTLIGHT!</h2>
+            <p>Select a topic to see how well they know you...</p>
+            
+            <div id="topic-container" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom: 15px;"></div>
+            
+            <button class="btn" onclick="toggleCustomCreator()" style="font-size: 1.1em; background: #34495e;">+ CREATE FROM SCRATCH</button>
+            
+            <div id="custom-creator" style="display:none; margin-top: 20px; border-top: 2px dashed var(--ink); padding-top: 20px;">
+                <input id="c-prompt" placeholder="Type Your Question Here...">
+                
+                <div id="custom-opts-container"></div>
+                <button class="btn" onclick="addOptionRow()" style="background:#eee; color:black; font-size: 1em; width: 60%; border:2px solid var(--ink);">+ Add Option</button>
+                <button class="btn" onclick="submitCustom()">LAUNCH LIST</button>
+            </div>
         </div>
-        <div id="topic-container" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:10px;"></div>
     </div>
 
     <div id="screen-waiting" class="screen">
-        <h2 id="wait-name"></h2>
-        <div style="font-size:3em;">🤔</div>
-        <p>is choosing the topic...</p>
+        <div class="paper-card loading-facts">
+            <h2 id="wait-name"></h2>
+            <div class="spinner"></div>
+            <p id="fact-display" style="font-size: 1.4em; min-height: 80px; transition: opacity 0.5s;"></p>
+            <p style="opacity: 0.6;">Hang tight while they sync up...</p>
+        </div>
     </div>
 
     <div id="screen-game" class="screen">
-        <div style="background:rgba(255,255,255,0.1); padding:5px 15px; border-radius:15px; margin-bottom:10px;">
-            <span id="role-text"></span>
+        <div class="paper-card">
+            <div id="role-indicator" style="background:var(--ink); color:white; padding:10px; border-radius:8px; margin-bottom:15px; font-weight:bold;"></div>
+            <h2 id="q-prompt" style="margin-bottom: 10px;"></h2>
+            <ul id="sortable-list"></ul>
+            <button class="btn" id="btn-submit" onclick="submitRank()">LOCK IN RANKING</button>
         </div>
-        <h2 id="q-prompt" style="font-size:1.3em;"></h2>
-        <ul id="sortable-list"></ul>
-        <button class="btn" id="btn-submit" onclick="submitRank()">LOCK IN</button>
     </div>
 
     <div id="screen-results" class="screen">
-        <h2>Results</h2>
-        
-        <div class="truth-box">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                <strong style="color:var(--accent);">The Truth (<span id="res-spot-name"></span>)</strong>
-                <span style="font-size:0.8em; opacity:0.5;">(Tap tabs below to compare)</span>
+        <div class="paper-card">
+            <h2 style="margin:0">Performance Check</h2>
+            <div style="text-align: left; background: #efefef; padding: 15px; border: 2px solid var(--ink); border-radius: 12px; margin: 15px 0;">
+                <p style="margin:0; font-weight:bold; color:var(--accent); font-size: 1.2em;">The Truth (<span id="res-spot-name"></span>):</p>
+                <div id="correct-list-summary"></div>
             </div>
-            <div id="correct-list-summary"></div>
+            <div id="player-tabs" style="display:flex; overflow-x:auto; padding-bottom:10px; width: 100%;"></div>
+            <div id="detail-view" style="width: 100%;"></div>
+            <button class="btn" id="btn-next" onclick="nextRound()" style="display:none; margin-top:20px;">NEXT ROUND</button>
         </div>
-
-        <div id="player-tabs"></div>
-
-        <div id="detail-view">
-            </div>
-        
-        <button class="btn" id="btn-next" onclick="nextRound()" style="display:none; margin-top:20px;">NEXT ROUND</button>
     </div>
 
+    <div id="finale-winner" class="finale-card"><div class="finale-text">WINNER:</div><h1 id="f-winner-name" style="font-size:5em;"></h1></div>
+    <div id="finale-soulmates" class="finale-card"><h1>SOULMATES 💖</h1><h2 id="f-soul-name"></h2></div>
+    <div id="finale-strangers" class="finale-card"><h1>STRANGERS 👻</h1><h2 id="f-stranger-name"></h2></div>
+
     <div id="screen-over" class="screen">
-        <h1>GAME OVER</h1>
-        
-        <div style="background: linear-gradient(135deg, #f0932b, #f9ca24); color: black; padding: 20px; border-radius: 20px; width: 90%; margin-bottom: 20px;">
-            <div style="font-size:3em;">🏆</div>
-            <h2 id="winner-name" style="margin:0;">Name</h2>
-            <p style="margin:0;">is the Winner!</p>
-        </div>
-
-        <div style="display:flex; gap:10px; width:95%;">
-            <div style="background: rgba(46, 204, 113, 0.2); padding: 15px; border-radius: 10px; flex:1;">
-                <h3>💖 Soulmates</h3>
-                <p id="soulmate-text" style="font-weight:bold; font-size:0.9em;"></p>
+        <div class="paper-card">
+            <h1>Game Summary</h1>
+            
+            <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                <div class="final-stat-box" style="border-color: var(--accent);">
+                    <div class="stat-label">Winner 👑</div>
+                    <div class="stat-val" id="sum-winner"></div>
+                </div>
             </div>
-            <div style="background: rgba(231, 76, 60, 0.2); padding: 15px; border-radius: 10px; flex:1;">
-                <h3>👻 Strangers</h3>
-                <p id="stranger-text" style="font-weight:bold; font-size:0.9em;"></p>
+            <div style="display:flex; gap:10px;">
+                <div class="final-stat-box" style="border-color: #e91e63;">
+                    <div class="stat-label">Soulmates 💖</div>
+                    <div class="stat-val" id="sum-soul" style="font-size:1.1em;"></div>
+                </div>
+                <div class="final-stat-box" style="border-color: #607d8b;">
+                    <div class="stat-label">Strangers 👻</div>
+                    <div class="stat-val" id="sum-stranger" style="font-size:1.1em;"></div>
+                </div>
+            </div>
+
+            <h2>Leaderboard</h2>
+            <div id="final-leaderboard" style="width:100%; margin-bottom: 20px;"></div>
+            
+            <div id="host-final-controls" style="display:none; width:100%;">
+                <button class="btn" onclick="playAgain()">PLAY AGAIN</button>
+                <button class="btn" style="background:var(--red);" onclick="endRoom()">END PARTY</button>
             </div>
         </div>
-
-        <h3>Leaderboard</h3>
-        <div id="final-leaderboard" style="width:100%;"></div>
-        <button class="btn" onclick="location.reload()" style="margin-top:20px;">PLAY AGAIN</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
     <script>
         const socket = io();
-        let myId = null;
-        let localTimer = null;
-        let hasSubmitted = false;
-        
-        // Globals for Results Logic
-        let currentRoundResults = [];
-        let currentCorrectOrder = [];
+        let myId, currentCorrectOrder, currentRoundResults, isHost, hasSubmitted = false, localTimer = null, sortableInstance = null;
+        let factInterval;
+        let finalDataCache = null;
+
+        const LOCAL_TOPICS = [
+            { p: "Best Pizza Topping", o: ["Pepperoni", "Pineapple", "Mushrooms", "Extra Cheese", "Olives"] },
+            { p: "Worst Chore", o: ["Dishes", "Laundry", "Vacuuming", "Taking out Trash", "Cleaning Bathroom"] },
+            { p: "Best Superpower", o: ["Flight", "Invisibility", "Teleportation", "Super Strength", "Time Travel"] },
+            { p: "Best Fast Food", o: ["McDonalds", "KFC", "Burger King", "Subway", "Taco Bell"] },
+            { p: "Scariest Animal", o: ["Snake", "Spider", "Shark", "Bear", "Cockroach"] },
+            { p: "Best Season", o: ["Summer", "Winter", "Autumn", "Spring"] },
+            { p: "Best Movie Genre", o: ["Horror", "Comedy", "Action", "Romance", "Sci-Fi"] },
+            { p: "Most Annoying Sound", o: ["Crying Baby", "Chalk on Board", "Chewing Loudly", "Alarm Clock", "Mosquito"] },
+            { p: "Best Ice Cream Flavor", o: ["Chocolate", "Vanilla", "Strawberry", "Mint Chip", "Cookie Dough"] },
+            { p: "Best Social Media", o: ["Instagram", "TikTok", "Twitter/X", "YouTube", "Snapchat"] },
+            { p: "Worst Way to Die", o: ["Burning", "Drowning", "Falling", "Buried Alive", "Frozen"] },
+            { p: "Best Breakfast", o: ["Pancakes", "Waffles", "Eggs & Bacon", "Cereal", "Toast"] },
+            { p: "Zombie Apocalypse Weapon", o: ["Shotgun", "Katana", "Bat", "Flamethrower", "Chainsaw"] },
+            { p: "Best Holiday", o: ["Christmas", "Halloween", "Thanksgiving", "Easter", "New Years"] },
+            { p: "Best Color", o: ["Blue", "Red", "Green", "Purple", "Black"] },
+            { p: "Cutest Pet", o: ["Dog", "Cat", "Hamster", "Bunny", "Parrot"] },
+            { p: "Worst Fruit", o: ["Durian", "Grapefruit", "Papaya", "Tomato", "Lemon"] },
+            { p: "Best Drink", o: ["Water", "Soda", "Coffee", "Tea", "Juice"] },
+            { p: "Best Streaming Service", o: ["Netflix", "Hulu", "Disney+", "HBO", "Prime"] },
+            { p: "Most Important Trait", o: ["Humor", "Loyalty", "Intelligence", "Kindness", "Wealth"] },
+            { p: "Best School Subject", o: ["Math", "Science", "History", "Art", "Gym"] },
+            { p: "Best Video Game Genre", o: ["FPS", "RPG", "Sports", "Puzzle", "Battle Royale"] },
+            { p: "Worst Smell", o: ["Skunk", "Rotten Egg", "Garbage", "Wet Dog", "Burnt Hair"] },
+            { p: "Best Place to Date", o: ["Cinema", "Park", "Restaurant", "Beach", "Home"] },
+            { p: "Best Music Genre", o: ["Pop", "Rock", "Rap", "Country", "EDM"] },
+            { p: "Scariest Horror Movie Villain", o: ["Freddy", "Jason", "Pennywise", "Chucky", "Ghostface"] },
+            { p: "Best Chocolate Bar", o: ["Snickers", "KitKat", "Twix", "Mars", "Hersheys"] },
+            { p: "Best Board Game", o: ["Monopoly", "Uno", "Scrabble", "Clue", "Risk"] },
+            { p: "Most Useful Invention", o: ["Internet", "Electricity", "Wheel", "Phone", "Plane"] },
+            { p: "Best Fry Shape", o: ["Curly", "Waffle", "Shoestring", "Steak", "Crinkle"] }
+        ];
+
+        const funFacts = [
+            "Strawberries aren't actually berries, but bananas are!",
+            "Octopuses have three hearts.",
+            "Wombat poop is cube-shaped.",
+            "Honey never spoils.",
+            "A group of flamingos is called a 'flamboyance'.",
+            "Sharks have been around longer than trees.",
+            "The heart of a shrimp is located in its head."
+        ];
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             document.getElementById('timer-container').style.display = (id === 'screen-game') ? 'block' : 'none';
+            if (id !== 'screen-waiting') clearInterval(factInterval);
         }
 
-        function updateSetDisplay() {
-            document.getElementById('disp-rounds').innerText = document.getElementById('inp-rounds').value;
-            document.getElementById('disp-timer').innerText = document.getElementById('inp-timer').value;
+        function rotateFacts() {
+            const display = document.getElementById('fact-display');
+            let i = 0;
+            display.innerText = funFacts[0];
+            factInterval = setInterval(() => {
+                display.style.opacity = 0;
+                setTimeout(() => {
+                    i = (i + 1) % funFacts.length;
+                    display.innerText = funFacts[i];
+                    display.style.opacity = 1;
+                }, 500);
+            }, 4000);
         }
 
-        // --- SOCKETS ---
-        socket.on('errorMsg', msg => alert(msg));
-        
+        // --- NEW CUSTOM CREATOR LOGIC ---
+        function toggleCustomCreator() {
+            const el = document.getElementById('custom-creator');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            if(el.style.display === 'block') {
+                document.getElementById('custom-opts-container').innerHTML = "";
+                for(let i=0; i<4; i++) addOptionRow();
+            }
+        }
+
+        function addOptionRow() {
+            const container = document.getElementById('custom-opts-container');
+            if(container.children.length >= 10) return;
+            const div = document.createElement('div');
+            div.className = 'custom-row';
+            // Added delete button
+            div.innerHTML = `
+                <div class="img-upload-box" onclick="this.querySelector('input').click()" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
+                    <span>+</span>
+                    <img class="preview">
+                    <input type="file" accept="image/*" hidden onchange="fileInputHandler(this)">
+                </div>
+                <input class="c-opt-text" placeholder="Option Text Here...">
+                <button class="del-btn" onclick="deleteRow(this)">X</button>
+            `;
+            container.appendChild(div);
+        }
+
+        // NEW: DELETE FUNCTION
+        function deleteRow(btn) {
+            const container = document.getElementById('custom-opts-container');
+            if(container.children.length <= 4) {
+                return alert("You must have at least 4 options!");
+            }
+            btn.closest('.custom-row').remove();
+        }
+
+        // Drag & Drop Handlers
+        function dragOverHandler(ev) { ev.preventDefault(); }
+        function dropHandler(ev) {
+            ev.preventDefault();
+            if (ev.dataTransfer.items && ev.dataTransfer.items[0].kind === 'file') {
+                const file = ev.dataTransfer.items[0].getAsFile();
+                processFile(file, ev.target.closest('.img-upload-box'));
+            }
+        }
+        function fileInputHandler(input) {
+            if (input.files && input.files[0]) {
+                processFile(input.files[0], input.closest('.img-upload-box'));
+            }
+        }
+        function processFile(file, box) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = box.querySelector('.preview');
+                const span = box.querySelector('span');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                span.style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function submitCustom() {
+            const p = document.getElementById('c-prompt').value;
+            // Scrape data from new structure
+            const rows = Array.from(document.querySelectorAll('.custom-row'));
+            const opts = rows.map(row => {
+                const text = row.querySelector('.c-opt-text').value;
+                const img = row.querySelector('.preview').style.display === 'block' ? row.querySelector('.preview').src : null;
+                return { text, image: img };
+            }).filter(o => o.text);
+
+            if(opts.length < 2) return alert("Min 2 options!");
+            socket.emit('submitTopic', { type: 'CUSTOM', prompt: p, options: opts });
+        }
+
+        function submitLocalTopic(index) {
+            // Converts a local preset into a "Custom" submission so the server accepts it
+            const t = LOCAL_TOPICS[index];
+            const opts = t.o.map(txt => ({ text: txt, image: null }));
+            socket.emit('submitTopic', { type: 'CUSTOM', prompt: t.p, options: opts });
+        }
+
         socket.on('updateState', (state) => {
-            myId = socket.id;
+            myId = socket.id; isHost = (socket.id === state.hostId);
             document.getElementById('lobby-code').innerText = state.roomCode;
             document.getElementById('room-display').innerText = state.roomCode;
             document.getElementById('room-display').style.display = 'block';
-
-            const pList = document.getElementById('lobby-list');
-            pList.innerHTML = state.players.map(p => 
-                `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:10px;">${p.name} ${p.isHost?'👑':''}</div>`
-            ).join('');
-
-            if(state.phase === 'LOBBY') {
-                showScreen('screen-lobby');
-                const isHost = (socket.id === state.hostId);
-                document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
-                document.getElementById('wait-msg').style.display = isHost ? 'none' : 'block';
-            }
+            document.getElementById('lobby-list').innerHTML = state.players.map(p => `<div style="background:white; border:2.5px solid var(--ink); padding:10px; border-radius:10px; font-weight:bold;">${p.name} ${p.isHost?'👑':''}</div>`).join('');
+            if(state.phase === 'LOBBY') showScreen('screen-lobby');
+            document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
         });
 
         socket.on('goToSelection', (data) => {
             if(socket.id === data.spotlightId) {
                 showScreen('screen-selection');
                 document.getElementById('round-num').innerText = data.roundInfo;
-                document.getElementById('topic-container').innerHTML = data.topics.map(t => 
-                    `<div style="background:#432c7a; padding:15px; border-radius:10px; cursor:pointer;" onclick="submitPreset('${t.id}')">${t.prompt}</div>`
-                ).join('');
+                
+                // --- INJECT RANDOM LOCAL TOPICS ---
+                const container = document.getElementById('topic-container');
+                container.innerHTML = "";
+                
+                // Shuffle local topics and pick 6
+                const shuffled = [...LOCAL_TOPICS].sort(() => 0.5 - Math.random());
+                const selected = shuffled.slice(0, 6);
+
+                selected.forEach((t) => {
+                    const originalIndex = LOCAL_TOPICS.indexOf(t);
+                    const div = document.createElement('div');
+                    div.style.cssText = "background:white; border:2.5px solid var(--ink); padding:12px; border-radius:10px; cursor:pointer; font-weight:bold; width:45%; box-sizing:border-box;";
+                    div.innerText = t.p;
+                    div.onclick = () => submitLocalTopic(originalIndex);
+                    container.appendChild(div);
+                });
+                
             } else {
                 showScreen('screen-waiting');
-                document.getElementById('wait-name').innerText = data.spotlightName;
+                document.getElementById('wait-name').innerText = `How well do you know ${data.spotlightName}?`;
+                rotateFacts();
             }
         });
 
         socket.on('roundStart', (data) => {
-            showScreen('screen-game');
-            hasSubmitted = false;
+            showScreen('screen-game'); hasSubmitted = false;
             document.getElementById('q-prompt').innerText = data.question.prompt;
-            const isSpot = (data.spotlightName === document.getElementById('username').value);
-            document.getElementById('role-text').innerHTML = isSpot ? "🔦 Rank the TRUTH" : `Guess <strong>${data.spotlightName}'s</strong> Rank`;
+            const isSpot = (socket.id === data.spotlightId);
+            document.getElementById('role-indicator').innerText = isSpot ? "🔦 RANK THE TRUTH" : `HOW WELL DO YOU KNOW ${data.spotlightName.toUpperCase()}?`;
             
-            // ANIMATION & AUTO SUBMIT
             const bar = document.getElementById('timer-bar');
             bar.style.transition = 'none'; bar.style.width = '100%';
-            void bar.offsetWidth; // Force Reflow
-            bar.style.transition = `width ${data.duration}s linear`;
-            bar.style.width = '0%';
+            void bar.offsetWidth; bar.style.transition = `width ${data.duration}s linear`; bar.style.width = '0%';
 
             if(localTimer) clearTimeout(localTimer);
             localTimer = setTimeout(() => { if(!hasSubmitted) submitRank(); }, data.duration * 1000);
 
-            // LIST
-            const list = document.getElementById('sortable-list');
-            list.innerHTML = "";
-            [...data.question.options].sort(()=>Math.random()-0.5).forEach(item => {
+            const list = document.getElementById('sortable-list'); list.innerHTML = "";
+            let options = data.question.options.map(o => typeof o === 'string' ? {text: o} : o);
+            [...options].sort(()=>Math.random()-0.5).forEach(item => {
                 const li = document.createElement('li');
-                li.innerHTML = `<span class="item-text">${item}</span> <span class="drag-handle">☰</span>`;
+                let html = `<span class="item-text">${item.text}</span>`;
+                if(item.image) html += `<img src="${item.image}" class="option-img">`;
+                li.innerHTML = html;
                 list.appendChild(li);
             });
-            new Sortable(list, { animation: 150 });
-            document.getElementById('btn-submit').style.display = 'inline-block';
+            if (sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(list, { animation: 150, forceFallback: true });
+            document.getElementById('btn-submit').style.display = 'block';
         });
+
+        function submitRank() {
+            if(hasSubmitted) return; hasSubmitted = true;
+            const rank = Array.from(document.querySelectorAll('#sortable-list li')).map(li => ({
+                text: li.querySelector('.item-text').innerText,
+                image: li.querySelector('.option-img') ? li.querySelector('.option-img').src : null
+            }));
+            socket.emit('submitRank', rank);
+            document.getElementById('btn-submit').style.display = 'none';
+        }
 
         socket.on('roundOver', (data) => {
-            showScreen('screen-results');
-            if(localTimer) clearTimeout(localTimer);
-
-            // Save data for tab switching
+            showScreen('screen-results'); if(localTimer) clearTimeout(localTimer);
             currentCorrectOrder = data.correctOrder;
-            currentRoundResults = data.results.sort((a,b) => b.points - a.points); // Sort by highest score
-
+            currentRoundResults = data.results.sort((a,b) => b.points - a.points);
             document.getElementById('res-spot-name').innerText = data.spotlightName;
+            document.getElementById('correct-list-summary').innerHTML = data.correctOrder.map((it,i) => `<div>${i+1}. ${it.text}</div>`).join('');
             
-            // 1. Render Truth Box (Summary)
-            document.getElementById('correct-list-summary').innerHTML = 
-                data.correctOrder.map((it,i) => `<div class="truth-item">${i+1}. ${it}</div>`).join('');
-            
-            // 2. Render Tabs
-            const tabContainer = document.getElementById('player-tabs');
-            tabContainer.innerHTML = "";
-            
+            const tabContainer = document.getElementById('player-tabs'); tabContainer.innerHTML = "";
             currentRoundResults.forEach((res, index) => {
-                const btn = document.createElement('div');
-                btn.className = 'tab-btn';
-                // Show Name + Score in the tab
-                btn.innerHTML = `${res.name} <span style="font-size:0.8em; color:var(--accent)">+${res.points}</span>`;
-                btn.onclick = () => renderPlayerDetail(index);
-                btn.id = `tab-${index}`;
+                const btn = document.createElement('div'); btn.className = 'tab-btn';
+                btn.innerHTML = `${res.name} <span style="color:var(--accent)">+${res.points}</span>`;
+                btn.onclick = () => renderPlayerDetail(index); btn.id = `tab-${index}`;
                 tabContainer.appendChild(btn);
             });
-
-            // 3. Auto-Select Tab (Me, or Top Player)
-            const myIndex = currentRoundResults.findIndex(r => r.id === myId);
-            renderPlayerDetail(myIndex !== -1 ? myIndex : 0);
-
-            document.getElementById('btn-next').style.display = 'inline-block';
+            renderPlayerDetail(0);
+            document.getElementById('btn-next').style.display = isHost ? 'block' : 'none';
         });
 
-        // --- NEW RENDER FUNCTION ---
         function renderPlayerDetail(index) {
-            // Update Tabs UI
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            const activeTab = document.getElementById(`tab-${index}`);
-            if(activeTab) activeTab.classList.add('active');
-
+            if(document.getElementById(`tab-${index}`)) document.getElementById(`tab-${index}`).classList.add('active');
             const data = currentRoundResults[index];
-            const container = document.getElementById('detail-view');
-            container.innerHTML = ""; // Clear old
-
-            if (!data || !data.rank) return; // Safety
-
-            // Recreate the "Card Structure"
-            const header = document.createElement('h3');
-            header.innerText = `${data.name}'s Guess:`;
-            container.appendChild(header);
-
+            const container = document.getElementById('detail-view'); container.innerHTML = "";
+            if (!data || !data.rank) return;
+            container.innerHTML = `<h3>${data.name.toUpperCase()}'S RANKING:</h3>`;
             data.rank.forEach((item, idx) => {
-                const isCorrect = (item === currentCorrectOrder[idx]);
-                const div = document.createElement('div');
-                div.className = `result-item ${isCorrect ? 'correct' : 'wrong'}`;
-                
-                let html = `<span>${idx+1}. ${item}</span>`;
-                if(isCorrect) html += `<span class="badge-score">+10</span>`;
-                
-                div.innerHTML = html;
-                container.appendChild(div);
+                const isC = (item.text === currentCorrectOrder[idx].text);
+                container.innerHTML += `<div class="res-card ${isC?'res-correct':'res-wrong'}"><span>${idx+1}. ${item.text}</span> ${isC?'<span style="background:var(--green); color:white; padding:2px 8px; border-radius:5px; font-size:0.8em;">+10</span>':''}</div>`;
             });
         }
 
         socket.on('gameOver', (data) => {
-            showScreen('screen-over');
-            document.getElementById('room-display').style.display = 'none';
-            document.getElementById('winner-name').innerText = data.winner ? data.winner.name : "No One";
-            document.getElementById('soulmate-text').innerText = data.soulmates.names + ` (${data.soulmates.score})`;
-            document.getElementById('stranger-text').innerText = data.strangers.names + ` (${data.strangers.score})`;
-            document.getElementById('final-leaderboard').innerHTML = data.leaderboard.map((p, i) => 
-                `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-                    <span>#${i+1} ${p.name}</span> <span>${p.score} pts</span>
-                </div>`
-            ).join('');
+            finalDataCache = data; 
+            
+            const winner = document.getElementById('finale-winner');
+            const soul = document.getElementById('finale-soulmates');
+            const stranger = document.getElementById('finale-strangers');
+
+            winner.style.display = 'flex';
+            document.getElementById('f-winner-name').innerText = data.winner.name;
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+
+            setTimeout(() => {
+                winner.style.display = 'none';
+                soul.style.display = 'flex';
+                document.getElementById('f-soul-name').innerText = data.soulmates.names;
+            }, 3000);
+
+            setTimeout(() => {
+                soul.style.display = 'none';
+                stranger.style.display = 'flex';
+                document.getElementById('f-stranger-name').innerText = data.strangers.names;
+            }, 6000);
+
+            setTimeout(() => {
+                stranger.style.display = 'none';
+                showScreen('screen-over');
+                
+                document.getElementById('sum-winner').innerText = data.winner.name;
+                document.getElementById('sum-soul').innerText = data.soulmates.names || "None";
+                document.getElementById('sum-stranger').innerText = data.strangers.names || "None";
+
+                document.getElementById('final-leaderboard').innerHTML = data.leaderboard.map((p, i) => `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:2px dashed #ccc; font-weight:bold;"><span>#${i+1} ${p.name}</span> <span>${p.score} PTS</span></div>`).join('');
+                if(isHost) document.getElementById('host-final-controls').style.display = 'block';
+            }, 9000);
         });
 
-        // --- ACTIONS ---
-        function createRoom() { const n=document.getElementById('username').value; if(n) socket.emit('createRoom', n); }
-        function joinRoom() { const n=document.getElementById('username').value; const c=document.getElementById('room-code-input').value; if(n&&c) socket.emit('joinRoom', {playerName:n, roomCode:c}); }
+        function createRoom() { const n = document.getElementById('username').value; if(n) socket.emit('createRoom', n); }
+        function joinRoom() { const n = document.getElementById('username').value; const c = document.getElementById('room-code-input').value; if(n&&c) socket.emit('joinRoom', {playerName:n, roomCode:c}); }
         function startGame() { socket.emit('startGame', { rounds: document.getElementById('inp-rounds').value, timer: document.getElementById('inp-timer').value }); }
-        
-        function toggleCustom() { const el=document.getElementById('custom-form'); el.style.display=el.style.display==='none'?'block':'none'; }
-        function submitCustom() {
-            const p = document.getElementById('c-prompt').value;
-            const o = Array.from(document.querySelectorAll('.c-opt')).map(i=>i.value).filter(v=>v);
-            if(o.length>=2) socket.emit('submitTopic', {type:'CUSTOM', prompt:p, options:o});
-        }
-        function submitPreset(id) { socket.emit('submitTopic', {type:'PREMADE', id}); }
-        
-        function submitRank() {
-            if(hasSubmitted) return;
-            hasSubmitted = true;
-            const rank = Array.from(document.querySelectorAll('#sortable-list li .item-text')).map(s => s.innerText);
-            socket.emit('submitRank', rank);
-            document.getElementById('btn-submit').style.display = 'none';
-        }
         function nextRound() { socket.emit('nextRound'); }
+        function playAgain() { socket.emit('playAgain'); }
+        function endRoom() { socket.emit('endRoom'); }
+        function updateSetDisplay() { document.getElementById('disp-rounds').innerText = document.getElementById('inp-rounds').value; document.getElementById('disp-timer').innerText = document.getElementById('inp-timer').value; }
+        socket.on('roomDestroyed', () => { alert("Host Ended Room"); location.reload(); });
+        socket.on('errorMsg', msg => alert(msg));
     </script>
 </body>
 </html>
