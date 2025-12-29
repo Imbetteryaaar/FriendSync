@@ -29,7 +29,16 @@
         .btn { background: var(--accent); color: white; border: var(--border); padding: 16px 25px; font-size: 1.4em; font-family: 'Fredoka One', cursive; border-radius: 10px 5px 10px 5px; cursor: pointer; margin: 10px 0; width: 90%; box-shadow: 4px 4px 0 var(--ink); transition: 0.1s; }
         .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
 
-        input[type="text"], input[type="number"], input[type="range"] { padding: 12px; border: 2.5px solid var(--ink); border-radius: 10px; background: rgba(255,255,255,0.8); font-size: 1.1em; width: 85%; margin-bottom: 10px; text-align: center; }
+        input[type="text"], input[type="number"] { padding: 12px; border: 2.5px solid var(--ink); border-radius: 10px; background: rgba(255,255,255,0.8); font-size: 1.1em; width: 85%; margin-bottom: 10px; text-align: center; }
+        
+        /* FIX: Better range slider styling */
+        input[type="range"] { 
+            width: 90%; 
+            margin: 10px 0; 
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
 
         #timer-container { width: 100%; height: 14px; background: #eee; border-bottom: 3px solid var(--ink); position: fixed; top: 0; z-index: 2000; display: none; }
         #timer-bar { height: 100%; background: var(--accent); width: 100%; transform-origin: left; }
@@ -39,7 +48,7 @@
         .option-img { width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; margin-top: 10px; }
 
         /* INSPECTOR CARDS */
-        .tab-btn { background: white; border: 2px solid var(--ink); padding: 8px 18px; border-radius: 20px; white-space: nowrap; cursor: pointer; font-family: 'Fredoka One', cursive; margin-right: 8px; }
+        .tab-btn { background: white; border: 2px solid var(--ink); padding: 8px 18px; border-radius: 20px; white-space: nowrap; cursor: pointer; font-family: 'Fredoka One', cursive; margin-right: 8px; margin-top: 5px; }
         .tab-btn.active { background: var(--accent); color: white; transform: translateY(-3px); }
         .res-card { background: white; border: 2px solid var(--ink); padding: 15px; margin: 8px 0; border-radius: 10px; display: flex; justify-content: space-between; font-size: 1.2em; font-weight: bold;}
         .res-correct { border-left: 12px solid var(--green); }
@@ -156,12 +165,12 @@
             <h1 id="lobby-code" style="text-shadow: none; font-size: 4.5em;">----</h1>
             <div id="lobby-list" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:20px 0;"></div>
             <div id="host-controls" style="display:none; width:100%;">
-                <div style="background: rgba(0,0,0,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                <div style="background: rgba(0,0,0,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-sizing: border-box; width: 100%;">
                     <label style="font-weight:bold;">Rounds: <span id="disp-rounds">5</span></label>
-                    <input type="range" id="inp-rounds" min="3" max="15" value="5" oninput="updateSetDisplay()" style="width:100%;">
+                    <input type="range" id="inp-rounds" min="3" max="15" value="5" oninput="updateSetDisplay()">
                     <br><br>
                     <label style="font-weight:bold;">Timer: <span id="disp-timer">60</span>s</label>
-                    <input type="range" id="inp-timer" min="20" max="120" value="60" oninput="updateSetDisplay()" style="width:100%;">
+                    <input type="range" id="inp-timer" min="20" max="120" value="60" oninput="updateSetDisplay()">
                 </div>
                 <button class="btn" onclick="startGame()">START SYNC</button>
             </div>
@@ -209,19 +218,17 @@
     <div id="screen-results" class="screen">
         <div class="paper-card">
             <h2 style="margin:0">Performance Check</h2>
-            <div style="text-align: left; background: #efefef; padding: 15px; border: 2px solid var(--ink); border-radius: 12px; margin: 15px 0;">
-                <p style="margin:0; font-weight:bold; color:var(--accent); font-size: 1.2em;">The Truth (<span id="res-spot-name"></span>):</p>
+            <div style="text-align: left; background: #efefef; padding: 15px; border: 2px solid var(--ink); border-radius: 12px; margin: 15px 0 25px 0;"> <p style="margin:0; font-weight:bold; color:var(--accent); font-size: 1.2em;">The Truth (<span id="res-spot-name"></span>):</p>
                 <div id="correct-list-summary"></div>
             </div>
-            <div id="player-tabs" style="display:flex; overflow-x:auto; padding-bottom:10px; width: 100%;"></div>
+            <div id="player-tabs" style="display:flex; overflow-x:auto; padding-bottom:10px; padding-top: 10px; width: 100%;"></div>
             <div id="detail-view" style="width: 100%;"></div>
             <button class="btn" id="btn-next" onclick="nextRound()" style="display:none; margin-top:20px;">NEXT ROUND</button>
         </div>
     </div>
 
     <div id="finale-winner" class="finale-card"><div class="finale-text">WINNER:</div><h1 id="f-winner-name" style="font-size:5em;"></h1></div>
-    <div id="finale-soulmates" class="finale-card"><h1>SOULMATES 💖</h1><h2 id="f-soul-name"></h2></div>
-    <div id="finale-strangers" class="finale-card"><h1>STRANGERS 👻</h1><h2 id="f-stranger-name"></h2></div>
+    <div id="finale-soulmates" class="finale-card"><h1>BEST FRIENDS 💖</h1><h2 id="f-soul-name"></h2></div> <div id="finale-strangers" class="finale-card"><h1>STRANGERS 👻</h1><h2 id="f-stranger-name"></h2></div>
 
     <div id="screen-over" class="screen">
         <div class="paper-card">
@@ -235,8 +242,7 @@
             </div>
             <div style="display:flex; gap:10px;">
                 <div class="final-stat-box" style="border-color: #e91e63;">
-                    <div class="stat-label">Soulmates 💖</div>
-                    <div class="stat-val" id="sum-soul" style="font-size:1.1em;"></div>
+                    <div class="stat-label">Best Friends 💖</div> <div class="stat-val" id="sum-soul" style="font-size:1.1em;"></div>
                 </div>
                 <div class="final-stat-box" style="border-color: #607d8b;">
                     <div class="stat-label">Strangers 👻</div>
